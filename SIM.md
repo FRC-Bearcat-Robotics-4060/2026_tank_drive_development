@@ -1,76 +1,77 @@
-# Branch `tank-drive` — 底盘开发 + 仿真
+# Branch `tank-drive` — Drivetrain development + simulation
 
-基于 `sim-field`。把 tank drive 底盘整理好、修掉两个 bug，并接上场地仿真。
+Based on `sim-field`. Cleans up the tank-drive drivetrain, fixes both bugs, and keeps the field simulation.
 
-## 结构
+## Structure
 
-| 文件 | 内容 |
+| File | Contents |
 |---|---|
-| `Constants.java` | 所有数字：PWM 通道、反转、最大输出、死区、手柄轴号、仿真起点 |
-| `Drivetrain.java` | 4 个电机、跟随关系、`DifferentialDrive`、Field2d、底盘物理仿真、电池压降仿真 |
-| `Robot.java` | 只负责把手柄接到 `Drivetrain`：左摇杆 Y → 左侧，右摇杆 Y → 右侧 |
+| `Constants.java` | Every number: PWM channels, inversion, max output, deadband, controller axes, sim start pose |
+| `Drivetrain.java` | The 4 motors, follower setup, `DifferentialDrive`, Field2d, drivetrain physics sim, battery-sag sim |
+| `Robot.java` | Only maps the controller to `Drivetrain`: left stick Y → left side, right stick Y → right side |
 
-## 修掉的 bug
+## Bugs fixed
 
-1. **从动电机不转** → `m_leftLeader.addFollower(m_leftFollower)` / `m_rightLeader.addFollower(m_rightFollower)`。
-   反转只设在主电机上：`set()` 会先应用主电机的反转，再把结果传给从动电机（已从 WPILib 2026 字节码确认）。
-2. **左右读同一个轴** → 左侧读 `kLeftYAxis`(1)，右侧读 `kRightYAxis`(5)。
+1. **Follower motors not driven** → `m_leftLeader.addFollower(m_leftFollower)` / `m_rightLeader.addFollower(m_rightFollower)`.
+   Inversion is set on the leaders only: `set()` applies the leader's inversion first and then passes the result to its followers (confirmed from the WPILib 2026 bytecode).
+2. **Both sides read the same axis** → the left side reads `kLeftYAxis` (1), the right side reads `kRightYAxis` (5).
 
-## 其他改动
+## Other changes
 
-- `kMaxOutput = 0.5`：**第一次上真机限制半速**，方向确认没问题后改成 1.0。
-- `kDeadband = 0.05`：摇杆回中不归零时机器人不会自己慢慢动。
-- `kSquareInputs = true`：低速更细腻，最高速不变。
-- `disabledInit()` 里主动停电机。
-- 仪表盘：`Drive/Left Output`、`Drive/Right Output`（只读）、`Field`。
-  **故意没有**用 `putData` 发布 `DifferentialDrive` 组件：它是可写的执行器，仪表盘能直接写电机速度，会覆盖 tankDrive 的输出（真机上也是安全隐患）。
-- 仿真里加了**电池压降**：猛加速时电流大，`RobotController.getBatteryVoltage()` 会掉。
+- `kMaxOutput = 0.5`: **half speed for the first real-robot tests**; raise to 1.0 once directions are verified.
+- `kDeadband = 0.05`: the robot does not creep when a worn stick doesn't return exactly to 0.
+- `kSquareInputs = true`: finer control at low speed, same top speed.
+- Motors are stopped explicitly in `disabledInit()`.
+- Dashboard: `Drive/Left Output`, `Drive/Right Output` (read-only), `Field`.
+  The `DifferentialDrive` widget is **deliberately not** published with `putData`: it is a writable actuator, so a dashboard can write motor speeds directly and override the `tankDrive` output (also a safety risk on the real robot).
+- **Battery sag** in simulation: hard acceleration draws more current and `RobotController.getBatteryVoltage()` drops.
+- Everything is logged to a `.wpilog` file; see `TESTING.md`.
 
-## 怎么跑仿真
+## How to run the simulation
 
-在 `pro 2 tank - tank-drive` 文件夹里：
+In the `pro 2 tank - tank-drive` folder:
 
 ```powershell
 .\gradlew simulateJava "-Dorg.gradle.java.home=C:\Users\Public\wpilib\2026\jdk"
 ```
 
-Sim GUI 里：
+In the Sim GUI:
 
-1. **NetworkTables → SmartDashboard → Field** 打开场地窗口。
-2. Robot State 选 **Teleoperated**。
-3. 手柄（二选一）：
-   - **推荐：插一个 Xbox 手柄到电脑**，它会出现在 System Joysticks 里，拖到 Joystick[0]。左摇杆=左侧、右摇杆=右侧，跟真机一样。
-   - **只用键盘**：tank drive 需要两个 Y 轴（轴 1 和轴 5），Keyboard 0 默认只配了前几个轴。打开 **DS → Keyboard 0 Settings**，把轴数加到 6，给 **Axis 5** 设两个键（比如 I / K），再把 Keyboard 0 拖到 Joystick[0]。这样 W/S 控左侧、I/K 控右侧。
+1. **NetworkTables → SmartDashboard → Field** to open the field window.
+2. Set Robot State to **Teleoperated**.
+3. Controller (pick one):
+   - **Recommended: plug an Xbox controller into the computer.** It appears under System Joysticks; drag it onto Joystick[0]. Left stick = left side, right stick = right side, same as on the real robot.
+   - **Keyboard only**: tank drive needs two Y axes (axis 1 and axis 5), but Keyboard 0 only has the first few axes configured by default. Open **DS → Keyboard 0 Settings**, raise the axis count to 6, assign two keys to **Axis 5** (for example I / K), then drag Keyboard 0 onto Joystick[0]. W/S then drives the left side and I/K the right side.
 
-## 验证清单（仿真里逐条过）
+## Verification checklist (go through each row in simulation)
 
-| 操作 | PWM 3 / 8（左） | PWM 4 / 5（右） | 场地上 |
+| Action | PWM 3 / 8 (left) | PWM 4 / 5 (right) | On the field |
 |---|---|---|---|
-| 两边都推前 | 3 与 8 相同，> 0 | 4 与 5 相同，< 0（右侧反转） | 直线往前 |
-| 只推左侧 | 有值 | 0 | 原地右转（顺时针） |
-| 只推右侧 | 0 | 有值 | 原地左转（逆时针） |
-| 左前右后 | > 0 | > 0 | 原地快速顺时针转 |
-| 切到 Disabled | 全 0 | 全 0 | 停下 |
+| Both sides forward | 3 equals 8, > 0 | 4 equals 5, < 0 (right side inverted) | Drives straight forward |
+| Left side only | Non-zero | 0 | Turns right in place (clockwise) |
+| Right side only | 0 | Non-zero | Turns left in place (counter-clockwise) |
+| Left forward, right backward | > 0 | > 0 | Spins quickly clockwise |
+| Switch to Disabled | All 0 | All 0 | Stops |
 
-最大值应该是 **±0.5**（`kMaxOutput`），不是 ±1。
+The maximum value should be **±0.5** (`kMaxOutput`), not ±1.
 
-## 上真机前（现场）
+## Before testing on the real robot (on site)
 
-1. **架空**，有人守空格键。
-2. 在 DS 的 USB 页确认右摇杆 Y 轴确实是 **Axis 5**，不是就改 `kRightYAxis`。
-3. 推左摇杆 → 左侧两个轮子都往前？推右摇杆 → 右侧两个轮子都往前？
-   - 某一侧反了 → 改 `kLeftInverted` / `kRightInverted`。
-   - 同一侧两个轮子方向相反（互相顶）→ 那个从动电机的安装方向和主电机相反，需要单独处理，先停下来报告。
-4. 都对了，再落地慢慢开；之后把 `kMaxOutput` 调到 1.0。
+1. Robot **on blocks**, someone standing by the Space bar.
+2. In the DS USB tab, confirm the right stick Y really is **Axis 5**; if not, change `kRightYAxis`.
+3. Push the left stick → do both left wheels turn forward? Push the right stick → do both right wheels turn forward?
+   - One side reversed → change `kLeftInverted` / `kRightInverted`.
+   - The two wheels on the same side turn in opposite directions (fighting each other) → that follower motor is mounted opposite to its leader and needs separate handling. Stop and report it first.
+4. Only when everything is correct, put the robot on the ground and drive slowly; then raise `kMaxOutput` to 1.0.
 
-## 已知限制
+## Known limitations
 
-- 仿真底盘参数是 **KOP kitbot 预设**（每侧 2×CIM、10.71:1、6 寸轮），不是队里真实参数。
-- 没有编码器/陀螺仪，所以没有里程计；场地上显示的是物理模型算的**真值**。
-- 场地没有墙壁碰撞。
+- The simulated drivetrain uses the **KOP kitbot preset** (2 × CIM per side, 10.71:1, 6 in wheels), not the team's real parameters.
+- No encoders or gyro, so no odometry; the field shows the **ground-truth pose** from the physics model.
+- No field wall collisions.
 
-## 下一步
+## Next steps
 
-- 填入真实的底盘参数（电机型号、减速比、轮径、质量、轮距）。
-- 加编码器 + 陀螺仪 → `DifferentialDriveOdometry`，场地上同时画"真值"和"估计"。
-- 改成 Command-based（`Drivetrain` 变成 `SubsystemBase`，手柄绑定移到 `RobotContainer`）。
+- Fill in the real drivetrain parameters (motor type, gear ratio, wheel diameter, mass, track width).
+- Add encoders + a gyro → `DifferentialDriveOdometry`, and draw both the "true" and the "estimated" pose on the field.
+- Move to Command-based (`Drivetrain` becomes a `SubsystemBase`, controller bindings move to `RobotContainer`).
