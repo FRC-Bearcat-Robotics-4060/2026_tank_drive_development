@@ -4,6 +4,8 @@
 
 package frc.robot;
 
+import edu.wpi.first.wpilibj.DataLogManager;
+import edu.wpi.first.wpilibj.DriverStation;
 import edu.wpi.first.wpilibj.Joystick;
 import edu.wpi.first.wpilibj.TimedRobot;
 import frc.robot.Constants.OIConstants;
@@ -16,8 +18,21 @@ import frc.robot.Constants.OIConstants;
  * {@link Constants}.
  */
 public class Robot extends TimedRobot {
-  private final Drivetrain m_drivetrain = new Drivetrain();
-  private final Joystick m_driver = new Joystick(OIConstants.kDriverControllerPort);
+  private final Drivetrain m_drivetrain;
+  private final Joystick m_driver;
+
+  public Robot() {
+    // Start logging first, so everything published afterwards is captured.
+    // Writes a .wpilog file with every NetworkTables value and the console output:
+    //   simulation -> "logs/" folder in the project
+    //   roboRIO    -> USB stick if one is plugged in, otherwise /home/lvuser/logs
+    DataLogManager.start();
+    // Also log Driver Station state (enabled, mode, e-stop) and all joystick axes/buttons.
+    DriverStation.startDataLog(DataLogManager.getLog());
+
+    m_drivetrain = new Drivetrain();
+    m_driver = new Joystick(OIConstants.kDriverControllerPort);
+  }
 
   /** Runs every loop in every mode (disabled, auto, teleop, test). */
   @Override

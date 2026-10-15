@@ -1,6 +1,8 @@
 package frc.robot;
 
 import edu.wpi.first.math.geometry.Pose2d;
+import edu.wpi.first.networktables.NetworkTableInstance;
+import edu.wpi.first.networktables.StructPublisher;
 import edu.wpi.first.wpilibj.DriverStation;
 import edu.wpi.first.wpilibj.RobotBase;
 import edu.wpi.first.wpilibj.RobotController;
@@ -35,6 +37,10 @@ public class Drivetrain {
 
   /** Field view, published as "SmartDashboard/Field". */
   private final Field2d m_field = new Field2d();
+
+  /** Simulated pose as a struct topic: AdvantageScope can plot it directly from the log. */
+  private final StructPublisher<Pose2d> m_simPosePublisher =
+      NetworkTableInstance.getDefault().getStructTopic("/Drive/SimPose", Pose2d.struct).publish();
 
   /**
    * Drivetrain physics model, only created in simulation (null on the real robot).
@@ -99,6 +105,20 @@ public class Drivetrain {
     // get() is the value before inversion: +1 = that side forward, on both sides.
     SmartDashboard.putNumber("Drive/Left Output", m_leftLeader.get());
     SmartDashboard.putNumber("Drive/Right Output", m_rightLeader.get());
+
+    // What each PWM channel actually outputs (after inversion), i.e. what the Sim GUI "PWM
+    // Outputs" panel shows. Logged so leader/follower agreement can be checked offline.
+    SmartDashboard.putNumber("Drive/PWM/Left Leader", pwmOutput(m_leftLeader));
+    SmartDashboard.putNumber("Drive/PWM/Left Follower", pwmOutput(m_leftFollower));
+    SmartDashboard.putNumber("Drive/PWM/Right Leader", pwmOutput(m_rightLeader));
+    SmartDashboard.putNumber("Drive/PWM/Right Follower", pwmOutput(m_rightFollower));
+
+    SmartDashboard.putNumber("Drive/Battery Volts", RobotController.getBatteryVoltage());
+  }
+
+  /** Signal on the motor's PWM pin: get() undoes the inversion, so re-apply it. */
+  private static double pwmOutput(PWMSparkMax motor) {
+    return motor.getInverted() ? -motor.get() : motor.get();
   }
 
   /** Call once per loop from Robot.simulationPeriodic(). Does nothing on the real robot. */
@@ -126,7 +146,19 @@ public class Drivetrain {
         BatterySim.calculateDefaultBatteryLoadedVoltage(m_driveSim.getCurrentDrawAmps()));
 
     // 4. Draw the simulated (ground-truth) pose.
-    m_field.setRobotPose(m_driveSim.getPose());
+    Pose2d pose = m_driveSim.getPose();
+    m_field.setRobotPose(pose);
+
+    // 5. Publish the physics state so it ends up in the .wpilog for offline analysis.
+    m_simPosePublisher.set(pose);
+    SmartDashboard.putNumber("Drive/Sim/X m", pose.getX());
+    SmartDashboard.putNumber("Drive/Sim/Y m", pose.getY());
+    SmartDashboard.putNumber("Drive/Sim/Heading deg", pose.getRotation().getDegrees());
+    SmartDashboard.putNumber("Drive/Sim/Left Velocity mps", m_driveSim.getLeftVelocityMetersPerSecond());
+    SmartDashboard.putNumber("Drive/Sim/Right Velocity mps", m_driveSim.getRightVelocityMetersPerSecond());
+    SmartDashboard.putNumber("Drive/Sim/Current A", m_driveSim.getCurrentDrawAmps());
+    SmartDashboard.putNumber("Drive/Sim/Left Volts", leftVolts);
+    SmartDashboard.putNumber("Drive/Sim/Right Volts", rightVolts);
   }
 
   /** Simulated ground-truth pose (simulation only; returns null on the real robot). */
