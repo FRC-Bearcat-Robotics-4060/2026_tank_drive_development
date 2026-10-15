@@ -1,50 +1,50 @@
-# Branch `sim-field` — 场地仿真
+# Branch `sim-field` — Field simulation
 
-在仿真里把机器人画在场地上，用手柄/键盘开着跑。**驾驶代码没改**，所以仿真里看到的就是真机用这份代码会出现的行为（包括两个已知 bug）。
+Draws the robot on a field in simulation and lets you drive it with a controller or the keyboard. **The driving code is unchanged**, so the simulation shows exactly what the real robot would do with this code, including its two known bugs.
 
-## 改了什么
+## What changed
 
-只改了 `src/main/java/frc/robot/Robot.java`：
+Only `src/main/java/frc/robot/Robot.java`:
 
-| 新增 | 作用 |
+| Added | Purpose |
 |---|---|
-| `Field2d m_field` | 场地组件，发布到 `SmartDashboard/Field` |
-| `DifferentialDrivetrainSim m_driveSim` | 底盘物理模型（只在仿真里创建） |
-| `simulationInit()` | 建模型、把机器人放到起点 `(2.0 m, 4.0 m)` |
-| `simulationPeriodic()` | 每 20 ms：读两个主电机的指令 → 换算成电压 → 推进物理 → 更新场地上的位置 |
+| `Field2d m_field` | Field widget, published to `SmartDashboard/Field` |
+| `DifferentialDrivetrainSim m_driveSim` | Drivetrain physics model (created only in simulation) |
+| `simulationInit()` | Builds the model and places the robot at the start pose `(2.0 m, 4.0 m)` |
+| `simulationPeriodic()` | Every 20 ms: read the two leader motor commands → convert to volts → step the physics → update the pose on the field |
 
-## 怎么跑
+## How to run
 
-在这个文件夹（`pro 2 tank - sim-field`）里：
+In this folder (`pro 2 tank - sim-field`):
 
 ```powershell
 .\gradlew simulateJava "-Dorg.gradle.java.home=C:\Users\Public\wpilib\2026\jdk"
 ```
 
-（用 WPILib VS Code 的话：`WPILib: Simulate Robot Code` → 只勾 Sim GUI。**不要点 main() 上的 Run。**）
+(In WPILib VS Code: `WPILib: Simulate Robot Code` → check Sim GUI only. **Do not click Run above `main()`.**)
 
-Sim GUI 里：
+In the Sim GUI:
 
-1. 菜单 **NetworkTables → SmartDashboard → Field**，打开场地窗口。
-2. 在场地窗口里**右键**，从设置里选一张内置的赛季场地图片（不选也能用，只是背景是空白网格）。
-3. **Keyboard 0** 拖到 **Joystick[0]**，Robot State 选 **Teleoperated**。
-4. 点一下窗口获得焦点，按住 **W / S**。
+1. Menu **NetworkTables → SmartDashboard → Field** to open the field window.
+2. **Right-click** in the field window and pick a built-in season field image from its settings (optional; without it the background is a blank grid).
+3. Drag **Keyboard 0** onto **Joystick[0]** and set Robot State to **Teleoperated**.
+4. Click the window to give it focus, then hold **W / S**.
 
-## 预期看到
+## What you should see
 
-- W：机器人沿当前朝向往前开，S：往后。
-- A / D：**不会转弯** —— 这就是 bug 2（左右都读同一个轴）。
-- 想让它回到起点：重启仿真。
+- W drives forward along the current heading, S drives backward.
+- A / D: **the robot does not turn** — this is bug 2 (both sides read the same axis).
+- To return to the start pose, restart the simulation.
 
-## 已知限制 / 假设
+## Assumptions and limitations
 
-- **底盘参数是假设的**：KOP kitbot 预设（每侧 2×CIM、10.71:1、6 寸轮）。要换成队里真实的电机型号、减速比、轮径、质量、轮距，速度和加速度才可信。
-- 模型假设每侧两个电机都出力，但真机代码目前**只驱动主电机**（bug 1），真机实际推力只有一半。
-- 显示的是**真值位姿**（物理模型算出来的），还没有里程计/编码器。以后加里程计时，场地上应同时画"真值"和"估计值"两个机器人。
-- 场地没有墙壁碰撞，机器人可以开出场地。
+- **Drivetrain parameters are placeholders**: the KOP kitbot preset (2 × CIM per side, 10.71:1, 6 in wheels). Replace them with the team's real motor type, gear ratio, wheel size, mass and track width before trusting speeds or accelerations.
+- The model assumes both motors on each side produce torque, but the robot code currently **only drives the leaders** (bug 1), so the real robot has about half the pushing force.
+- The field shows the **ground-truth pose** computed by the physics model. There is no odometry or encoder yet; once odometry is added, draw both the "true" and the "estimated" robot on the field.
+- There are no field walls; the robot can drive off the field.
 
-## 下一步（给学生）
+## Next steps (for students)
 
-1. 修 bug 1（`addFollower`）和 bug 2（转向），在仿真里确认能转弯。
-2. 把底盘参数抽到 `Constants`，换成真实值。
-3. 加编码器 + 陀螺仪 + `DifferentialDriveOdometry`，场地上画第二个机器人（估计位姿），对比真值。
+1. Fix bug 1 (`addFollower`) and bug 2 (turning), then confirm in simulation that the robot turns.
+2. Move the drivetrain parameters into `Constants` and replace them with the real values.
+3. Add encoders + a gyro + `DifferentialDriveOdometry`, and draw a second robot (the estimated pose) on the field to compare against the ground truth.
