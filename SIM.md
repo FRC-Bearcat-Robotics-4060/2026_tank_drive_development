@@ -22,7 +22,8 @@
 - `kDeadband = 0.05`：摇杆回中不归零时机器人不会自己慢慢动。
 - `kSquareInputs = true`：低速更细腻，最高速不变。
 - `disabledInit()` 里主动停电机。
-- 仪表盘：`Drive`（驱动组件）、`Drive/Left Output`、`Drive/Right Output`、`Field`。
+- 仪表盘：`Drive/Left Output`、`Drive/Right Output`（只读）、`Field`。
+  **故意没有**用 `putData` 发布 `DifferentialDrive` 组件：它是可写的执行器，仪表盘能直接写电机速度，会覆盖 tankDrive 的输出（真机上也是安全隐患）。
 - 仿真里加了**电池压降**：猛加速时电流大，`RobotController.getBatteryVoltage()` 会掉。
 
 ## 怎么跑仿真

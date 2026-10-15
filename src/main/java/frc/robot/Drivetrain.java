@@ -1,7 +1,6 @@
 package frc.robot;
 
 import edu.wpi.first.math.geometry.Pose2d;
-import edu.wpi.first.util.sendable.SendableRegistry;
 import edu.wpi.first.wpilibj.DriverStation;
 import edu.wpi.first.wpilibj.RobotBase;
 import edu.wpi.first.wpilibj.RobotController;
@@ -59,11 +58,11 @@ public class Drivetrain {
     m_drive.setMaxOutput(DriveConstants.kMaxOutput);
     m_drive.setDeadband(DriveConstants.kDeadband);
 
-    // Dashboard only: show the motors as children of the drive widget.
-    SendableRegistry.addChild(m_drive, m_leftLeader);
-    SendableRegistry.addChild(m_drive, m_rightLeader);
-
-    SmartDashboard.putData("Drive", m_drive);
+    // Deliberately NOT publishing m_drive with SmartDashboard.putData(): DifferentialDrive is an
+    // actuator Sendable whose "Left/Right Motor Speed" entries are writable and call the motors'
+    // set() directly. A dashboard widget (e.g. the Sim GUI "Drive" window) can then overwrite what
+    // tankDrive() commanded, and on the real robot anything on the network could drive the motors.
+    // Read-only numbers are published in periodic() instead.
     SmartDashboard.putData("Field", m_field);
 
     if (RobotBase.isSimulation()) {
