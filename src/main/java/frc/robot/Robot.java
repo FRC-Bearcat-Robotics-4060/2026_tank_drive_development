@@ -8,7 +8,14 @@ import edu.wpi.first.util.sendable.SendableRegistry;
 import edu.wpi.first.wpilibj.Joystick;
 import edu.wpi.first.wpilibj.TimedRobot;
 import edu.wpi.first.wpilibj.drive.DifferentialDrive;
-import edu.wpi.first.wpilibj.motorcontrol.PWMSparkMax;
+import edu.wpi.first.wpilibj.drive.RobotDriveBase;
+import com.revrobotics.spark.SparkLowLevel.MotorType;
+
+import com.revrobotics.spark.SparkMax;
+import com.revrobotics.PersistMode;
+import com.revrobotics.ResetMode;
+import com.revrobotics.spark.config.SparkMaxConfig;
+
 
 /**
  * This is a demo program showing the use of the DifferentialDrive class, specifically it contains
@@ -18,10 +25,10 @@ public class Robot extends TimedRobot {
   private final DifferentialDrive m_robotDrive;
   private Joystick m_stick;
 
-  private final PWMSparkMax m_leftleaderMotor = new PWMSparkMax(3);
-  private final PWMSparkMax m_rightleaderMotor = new PWMSparkMax(4);
-  private final PWMSparkMax m_leftfollowerMotor = new PWMSparkMax(8);
-  private final PWMSparkMax m_rightfollowerMotor = new PWMSparkMax(5);
+  private final SparkMax m_leftleaderMotor = new SparkMax(3, MotorType.kBrushed);
+  private final SparkMax m_rightleaderMotor = new SparkMax(4, MotorType.kBrushed);
+  private final SparkMax m_leftfollowerMotor = new SparkMax(8, MotorType.kBrushed);
+  private final SparkMax m_rightfollowerMotor = new SparkMax(5, MotorType.kBrushed);
 
   /** Called once at the beginning of the robot program. */
   public Robot() {
@@ -35,11 +42,20 @@ public class Robot extends TimedRobot {
 
     SendableRegistry.addChild(m_robotDrive, m_leftfollowerMotor);
     SendableRegistry.addChild(m_robotDrive, m_rightfollowerMotor);
+    // m_leftleaderMotor.addFolloPwer(m_leftfollowerMotor);
+    // m_rightleaderMotor.addFollower(m_rightfollowerMotor);
+    m_leftfollowerMotor.configure(new SparkMaxConfig().follow(m_leftleaderMotor),
+    ResetMode.kNoResetSafeParameters, PersistMode.kNoPersistParameters);
+    m_rightfollowerMotor.configure(new SparkMaxConfig().follow(m_rightleaderMotor),
+    ResetMode.kNoResetSafeParameters, PersistMode.kNoPersistParameters);
+  
+  
   }
 
   @Override
   public void teleopPeriodic() {
     m_robotDrive.tankDrive(-m_stick.getY(), -m_stick.getY());
+    //m_robotDrive.tankDrive(-m_stick.getY(), -m_stick.getRawAxis(5));
   }
 
 }
